@@ -51,6 +51,16 @@
             <artifactId>paper-api</artifactId>
             <version>1.21.6-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
+            <!-- paper-api ciagnie "deprecated" bungeecord-chat bez pakietow
+                 net.md_5.bungee.api.chat.objects/.player, ktorych uzywa modul
+                 spigot. Bungee-chat ma dostarczac spigot-api; tu chcemy tylko
+                 io.papermc.paper.registry.RegistryKey. -->
+            <exclusions>
+                <exclusion>
+                    <groupId>net.md-5</groupId>
+                    <artifactId>bungeecord-chat</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 
