@@ -1,0 +1,66 @@
+name: Build & Release
+
+# Każda zmiana w kodzie na domyślnej gałęzi -> nowy build i nowy release.
+on:
+  push:
+    branches:
+      - feat/folia-support
+    paths:
+      - '**/*.java'
+      - '**/pom.xml'
+      - '**/src/**'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn -B -ntp clean package
+
+      - name: Read project version
+        id: ver
+        run: echo "version=$(mvn -q -ntp -Dexpression=project.version -DforceStdout help:evaluate)" >> "$GITHUB_OUTPUT"
+
+      - name: Collect artifacts
+        id: collect
+        run: |
+          mkdir -p release-jars
+          # Bierzemy zbudowane jary, pomijamy pomocnicze (sources / oryginał sprzed shade)
+          find . -path '*/target/*.jar' \
+            ! -name '*-sources.jar' \
+            ! -name 'original-*.jar' \
+            -exec cp -v {} release-jars/ \;
+          echo "Zebrane pliki:"
+          ls -1 release-jars/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}-build.${{ github.run_number }}
+          name: nightcore ${{ steps.ver.outputs.version }} (build ${{ github.run_number }})
+          body: |
+            Automatyczny release z commita ${{ github.sha }}.
+
+            Gałąź: `${{ github.ref_name }}`
+            Wersja projektu: `${{ steps.ver.outputs.version }}`
+          files: release-jars/*.jar
+          fail_on_unmatched_files: true
